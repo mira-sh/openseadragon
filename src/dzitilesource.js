@@ -371,3 +371,108 @@ function configureFromObject( tileSource, configuration ){
 }
 
 }( OpenSeadragon ));
+
+
+(function( $ ){
+
+/**
+ * @class ScopioTileSource
+ */
+$.ScopioTileSource = function( width, height, tileSize, tileOverlap, tilesUrl, fileFormat, displayRects, minLevel, maxLevel ) {
+    var i,
+        rect,
+        level,
+        options;
+
+    if( $.isPlainObject( width ) ){
+        options = width;
+    }else{
+        options = {
+            width: arguments[ 0 ],
+            height: arguments[ 1 ],
+            tileSize: arguments[ 2 ],
+            tileOverlap: arguments[ 3 ],
+            tilesUrl: arguments[ 4 ],
+            fileFormat: arguments[ 5 ],
+            displayRects: arguments[ 6 ],
+            minLevel: arguments[ 7 ],
+            maxLevel: arguments[ 8 ]
+        };
+    }
+
+    this._levelRects  = {};
+    this.tilesUrl     = options.tilesUrl;
+    this.fileFormat   = options.fileFormat;
+    this.displayRects = options.displayRects;
+
+    if ( this.displayRects ) {
+        for ( i = this.displayRects.length - 1; i >= 0; i-- ) {
+            rect = this.displayRects[ i ];
+            for ( level = rect.minLevel; level <= rect.maxLevel; level++ ) {
+                if ( !this._levelRects[ level ] ) {
+                    this._levelRects[ level ] = [];
+                }
+                this._levelRects[ level ].push( rect );
+            }
+        }
+    }
+
+    $.TileSource.apply( this, [ options ] );
+
+};
+
+$.extend( $.ScopioTileSource.prototype, $.DziTileSource.prototype, /** @lends OpenSeadragon.ScopioTileSource.prototype */{
+
+
+    /**
+     * Determine if the data and/or url imply the image service is supported by
+     * this tile source.
+     * @function
+     * @param {Object|Array} data
+     * @param {String} optional - url
+     */
+    supports: function( data, url ){
+        var ns;
+        if ( data.Image ) {
+            ns = data.Image.xmlns;
+        } else if ( data.documentElement) {
+            if ("Image" == data.documentElement.localName || "Image" == data.documentElement.tagName) {
+                ns = data.documentElement.namespaceURI;
+            }
+        }
+
+        return ( "http://schemas.microsoft.com/deepzoom/2008/scopio" == ns );
+    },
+
+    /**
+     * @function
+     * @param {Number} level
+     * @param {Number} x
+     * @param {Number} y
+     */
+    getTileUrl: function( level, x, y ) {
+       //add timestamp to the url to bypass browsers cache
+        return [ this.tilesUrl, level, '/', x, '_', y, '.', this.fileFormat, this.queryParams, "?t=", Date.now().toString() ].join( '' );
+    },
+
+
+    /**
+     * @function
+     * @param {Number} level
+     * @param {Number} x
+     * @param {Number} y
+     */
+    tileExists: function( level, x, y ) {
+
+        var numTiles = this.getNumTiles( level );
+        return level >= this.minLevel &&
+               level <= this.maxLevel &&
+               x >= 0 &&
+               y >= 0 &&
+               x < numTiles.x &&
+               y < numTiles.y;
+    }
+});
+
+
+}( OpenSeadragon ));
